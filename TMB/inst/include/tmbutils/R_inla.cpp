@@ -62,7 +62,7 @@ struct spde_aniso_t{
 
 /** Precission matrix for the anisotropic case, eqn (20) in Lindgren et al. (2011) */    
 template<class Type>
-  SparseMatrix<Type> Q_spde(spde_aniso_t<Type> spde, Type kappa, vector<Type> ln_H_input){
+  SparseMatrix<Type> Q_spde(spde_aniso_t<Type> spde, Type kappa, matrix<Type> H){
 
   int i;
   Type kappa_pow2 = kappa*kappa;
@@ -78,11 +78,6 @@ template<class Type>
   SparseMatrix<Type> G0 = spde.G0;
   SparseMatrix<Type> G0_inv = spde.G0_inv;
 	  	  
-  matrix<Type> H(2,2);
-  H(0,0) = exp(ln_H_input(0));
-  H(1,0) = ln_H_input(1);
-  H(0,1) = ln_H_input(1);
-  H(1,1) = (1+ln_H_input(1)*ln_H_input(1)) / exp(ln_H_input(0));
   Type H_trace = H(0,0)+H(1,1);
   Type H_det = H(0,0)*H(1,1)-H(0,1)*H(1,0);
   SparseMatrix<Type> G1_aniso(n_s,n_s); 
