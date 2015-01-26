@@ -6,11 +6,12 @@
 /** \brief SPDE methods from INLA R-package .
 
 */
+
+namespace R_inla {
 using namespace Eigen;
 using namespace tmbutils;
 
-namespace R_inla {
-	
+/** \brief Object containing all elements of an SPDE object, i.e. eqn (10) in Lindgren et al. */	
 template<class Type>
 struct spde_t{  
   SparseMatrix<Type> G0;
@@ -23,6 +24,16 @@ struct spde_t{
 }
 };
 
+/** Precission matrix eqn (10) in Lindgren et al. (2011) */    
+template<class Type>
+  SparseMatrix<Type> Q_spde(spde_t<Type> spde, Type kappa){
+  Type kappa_pow2 = kappa*kappa;
+  Type kappa_pow4 = kappa_pow2*kappa_pow2;
+  	
+  return kappa_pow4*spde.G0 + Type(2.0)*kappa_pow2*spde.G1 + spde.G2;    
+}
+
+/** \brief Object containing all elements of an anisotropic SPDE object, i.e. eqn (20) in Lindgren et al. */	
 template<class Type>
 struct spde_aniso_t{
   int n_s;
@@ -31,7 +42,7 @@ struct spde_aniso_t{
   matrix<Type> E0;
   matrix<Type> E1;
   matrix<Type> E2;
-  vector<int> TV;
+  matrix<int>  TV;
   SparseMatrix<Type> G0;
   SparseMatrix<Type> G0_inv;
   spde_aniso_t(SEXP x){  /* x = List passed from R */
@@ -41,20 +52,12 @@ struct spde_aniso_t{
   E0 = asMatrix<Type>(getListElement(x,"E0"));
   E1 = asMatrix<Type>(getListElement(x,"E1"));
   E2 = asMatrix<Type>(getListElement(x,"E2"));  
-  TV = asVector<int>(getListElement(x,"TV")); 
+  TV = asMatrix<int>(getListElement(x,"TV")); 
   G0 = asSparseMatrix<Type>(getListElement(x,"G0"));
   G0_inv = asSparseMatrix<Type>(getListElement(x,"G0_inv"));
+  
 }
 };
-
-/** Precission matrix eqn (10) in Lindgren et al. (2011) */    
-template<class Type>
-  SparseMatrix<Type> Q_spde(spde_t<Type> spde, Type kappa){
-  Type kappa_pow2 = kappa*kappa;
-  Type kappa_pow4 = kappa_pow2*kappa_pow2;
-  	
-  return kappa_pow4*spde.G0 + Type(2.0)*kappa_pow2*spde.G1 + spde.G2;    
-}
 
 
 /** Precission matrix for the anisotropic case, eqn (20) in Lindgren et al. (2011) */    
@@ -71,7 +74,7 @@ template<class Type>
   matrix<Type> E0 = spde.E0;
   matrix<Type> E1 = spde.E1;
   matrix<Type> E2 = spde.E2;
-  vector<int> TV = spde.TV;
+  matrix<int> TV = spde.TV;
   SparseMatrix<Type> G0 = spde.G0;
   SparseMatrix<Type> G0_inv = spde.G0_inv;
 	  	  
@@ -105,23 +108,21 @@ template<class Type>
   }
   // Calculate G1 - pt. 2
   for(i=0; i<n_tri; i++){
-    int i0 = i;
-    int i1 = i + n_tri; 
-    int i2 = i + 2*n_tri; 
-    G1_aniso.coeffRef(TV(i1),TV(i0)) = G1_aniso.coeffRef(TV(i1),TV(i0)) + (Gtmp(i,0,1));  
-    G1_aniso.coeffRef(TV(i0),TV(i1)) = G1_aniso.coeffRef(TV(i0),TV(i1)) + (Gtmp(i,0,1));  
-    G1_aniso.coeffRef(TV(i2),TV(i1)) = G1_aniso.coeffRef(TV(i2),TV(i1)) + (Gtmp(i,1,2));  
-    G1_aniso.coeffRef(TV(i1),TV(i2)) = G1_aniso.coeffRef(TV(i1),TV(i2)) + (Gtmp(i,1,2));  
-    G1_aniso.coeffRef(TV(i2),TV(i0)) = G1_aniso.coeffRef(TV(i2),TV(i0)) + (Gtmp(i,0,2));  
-    G1_aniso.coeffRef(TV(i0),TV(i2)) = G1_aniso.coeffRef(TV(i0),TV(i2)) + (Gtmp(i,0,2));  
-    G1_aniso.coeffRef(TV(i0),TV(i0)) = G1_aniso.coeffRef(TV(i0),TV(i0)) + (Gtmp(i,0,0));  
-    G1_aniso.coeffRef(TV(i1),TV(i1)) = G1_aniso.coeffRef(TV(i1),TV(i1)) + (Gtmp(i,1,1));  
-    G1_aniso.coeffRef(TV(i2),TV(i2)) = G1_aniso.coeffRef(TV(i2),TV(i2)) + (Gtmp(i,2,2));  
+    G1_aniso.coeffRef(TV(i,1),TV(i,0)) = G1_aniso.coeffRef(TV(i,1),TV(i,0)) + (Gtmp(i,0,1));  
+    G1_aniso.coeffRef(TV(i,0),TV(i,1)) = G1_aniso.coeffRef(TV(i,0),TV(i,1)) + (Gtmp(i,0,1));  
+    G1_aniso.coeffRef(TV(i,2),TV(i,1)) = G1_aniso.coeffRef(TV(i,2),TV(i,1)) + (Gtmp(i,1,2));  
+    G1_aniso.coeffRef(TV(i,1),TV(i,2)) = G1_aniso.coeffRef(TV(i,1),TV(i,2)) + (Gtmp(i,1,2));  
+    G1_aniso.coeffRef(TV(i,2),TV(i,0)) = G1_aniso.coeffRef(TV(i,2),TV(i,0)) + (Gtmp(i,0,2));  
+    G1_aniso.coeffRef(TV(i,0),TV(i,2)) = G1_aniso.coeffRef(TV(i,0),TV(i,2)) + (Gtmp(i,0,2));  
+    G1_aniso.coeffRef(TV(i,0),TV(i,0)) = G1_aniso.coeffRef(TV(i,0),TV(i,0)) + (Gtmp(i,0,0));  
+    G1_aniso.coeffRef(TV(i,1),TV(i,1)) = G1_aniso.coeffRef(TV(i,1),TV(i,1)) + (Gtmp(i,1,1));  
+    G1_aniso.coeffRef(TV(i,2),TV(i,2)) = G1_aniso.coeffRef(TV(i,2),TV(i,2)) + (Gtmp(i,2,2));  
   }
   G2_aniso = G1_aniso * G0_inv * G1_aniso; 
 
   return kappa_pow4*G0 + Type(2.0)*kappa_pow2*G1_aniso + G2_aniso;
 }
 
-
 } // end namespace R_inla
+
+
