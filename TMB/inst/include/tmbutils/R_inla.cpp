@@ -14,13 +14,13 @@ using namespace tmbutils;
 /** \brief Object containing all elements of an SPDE object, i.e. eqn (10) in Lindgren et al. */	
 template<class Type>
 struct spde_t{  
-  SparseMatrix<Type> G0;
-  SparseMatrix<Type> G1;
-  SparseMatrix<Type> G2;
+  SparseMatrix<Type> M0;	// G0 eqn (10) in Lindgren 
+  SparseMatrix<Type> M1;	// G1 eqn (10) in Lindgren 
+  SparseMatrix<Type> M2;	// G2 eqn (10) in Lindgren 
   spde_t(SEXP x){  /* x = List passed from R */
-  G0 = asSparseMatrix<Type>(getListElement(x,"G0"));
-  G1 = asSparseMatrix<Type>(getListElement(x,"G1"));
-  G2 = asSparseMatrix<Type>(getListElement(x,"G2"));
+  M0 = asSparseMatrix<Type>(getListElement(x,"M0"));
+  M1 = asSparseMatrix<Type>(getListElement(x,"M1"));
+  M2 = asSparseMatrix<Type>(getListElement(x,"M2"));
 }
 };
 
@@ -30,7 +30,7 @@ template<class Type>
   Type kappa_pow2 = kappa*kappa;
   Type kappa_pow4 = kappa_pow2*kappa_pow2;
   	
-  return kappa_pow4*spde.G0 + Type(2.0)*kappa_pow2*spde.G1 + spde.G2;    
+  return kappa_pow4*spde.M0 + Type(2.0)*kappa_pow2*spde.M1 + spde.M2;    // M0=G0, M1=G1, M2=G2
 }
 
 /** \brief Object containing all elements of an anisotropic SPDE object, i.e. eqn (20) in Lindgren et al. */	
