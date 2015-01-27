@@ -24,7 +24,7 @@ struct spde_t{
 }
 };
 
-/** Precission matrix eqn (10) in Lindgren et al. (2011) */    
+/** Precision matrix eqn (10) in Lindgren et al. (2011) */    
 template<class Type>
   SparseMatrix<Type> Q_spde(spde_t<Type> spde, Type kappa){
   Type kappa_pow2 = kappa*kappa;
@@ -60,7 +60,7 @@ struct spde_aniso_t{
 };
 
 
-/** Precission matrix for the anisotropic case, eqn (20) in Lindgren et al. (2011) */    
+/** Precision matrix for the anisotropic case, eqn (20) in Lindgren et al. (2011) */    
 template<class Type>
   SparseMatrix<Type> Q_spde(spde_aniso_t<Type> spde, Type kappa, matrix<Type> H){
 
