@@ -224,20 +224,18 @@ Example (incomplete) of use:
 In R: 
 \verbatim
 data <- list()
-data$object <- list(a=1:10+.5,b=matrix(1:6+.5,2))
-attr(data,"check.passed") <- TRUE 	# Cheat TMB to allow list object
+data$object <- list(a=1:10, b=matrix(1:6,2))
 obj <- MakeADFun(data,........) 
 \endverbatim
 
 In C++: 
 \verbatim
-template<class Type>
-
 // Corresponding list object on the C++ side
-struct my_list object{
+template<class Type>
+struct my_list {
   vector<Type> a;
   matrix<Type> b;
-  spde_t(SEXP x){ 
+  my_list(SEXP x){ // Constructor
     a = asVector<Type>(getListElement(x,"a"));
     b = asMatrix<Type>(getListElement(x,"b"));
   }
@@ -246,7 +244,7 @@ struct my_list object{
 template<class Type>
 Type objective_function<Type>::operator() ()
 {
-  DATA_STRUCT(object, my_list object);
+  DATA_STRUCT(object, my_list);
   REPORT(object.a); // Now you can use "a" and "b" as you like
   REPORT(object.b);
   return 0;
