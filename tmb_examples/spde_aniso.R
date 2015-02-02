@@ -67,10 +67,18 @@ data$spde <- list(
 parameters <- list(beta=c(-5.0,0,0,0,0),log_tau=-2.0,log_kappa=2.5,ln_H_input=c(0,0),log_alpha=-1,x=rep(0.0,data$spde$n_s))
 
 # Fit model non-spatial model first to get good starting values
-obj <- MakeADFun(data,parameters,random="x",DLL="spde_aniso")
+data$flag <- 1
+obj1 <- MakeADFun(data,parameters,random="x",DLL="spde_aniso")
+data$flag <- 0
+obj0 <- MakeADFun(data,parameters,random="x",DLL="spde_aniso")
+obj <- list()
+obj$fn <- function(x)obj1$fn(x)-obj0$fn(x)
+obj$gr <- function(x)obj1$gr(x)-obj0$gr(x)
+obj$par <- obj1$par
+
 L=c(-7,-1,-1,-1,-1,-3.0,2.0,c(-10,-10),log(0.1))
 U=c(-4,1,1,1,1,-1.0,3.0,c(10,10),log(10.0))
-opt <- nlminb(obj$par,obj$fn,obj$gr,lower=L,upper=U)
+system.time(opt <- nlminb(obj$par,obj$fn,obj$gr,lower=L,upper=U))
 
 
 # Maybe some nice plots here.....

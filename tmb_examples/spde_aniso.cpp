@@ -7,6 +7,7 @@ Type objective_function<Type>::operator() ()
   using namespace density;
   using namespace Eigen;
 
+  DATA_INTEGER(flag); // flag=0 => only prior
   DATA_VECTOR(time);
   DATA_IVECTOR(notcens);
   DATA_IVECTOR(meshidxloc);
@@ -33,7 +34,10 @@ Type objective_function<Type>::operator() ()
   H(1,1) = (1+ln_H_input(1)*ln_H_input(1)) / exp(ln_H_input(0));
   SparseMatrix<Type> Q = Q_spde(spde,kappa,H);
 
-  nll = GMRF(Q)(x);									// Negative log likelihood
+  //nll = GMRF(Q)(x);									// Negative log likelihood
+  nll = .5*(x*(Q*x.matrix()).array()).sum(); // Drop normalizing constant
+
+  if(flag==0)return nll;
 
   vector<Type> Xbeta = X*beta;  
   for(int i=0; i<time.size(); i++){    
