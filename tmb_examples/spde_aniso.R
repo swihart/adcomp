@@ -69,7 +69,7 @@ parameters <- list(beta=c(-5.0,0,0,0,0),log_tau=-2.0,log_kappa=2.5,ln_H_input=c(
 # Fit model non-spatial model first to get good starting values
 obj <- MakeADFun(data,parameters,random="x",DLL="spde_aniso")
 L=c(-7,-1,-1,-1,-1,-3.0,2.0,c(-10,-10),log(0.1))
-U=c(-4,1,1,1,1,-1.0,3.0,c(-10,-10),log(10.0))
+U=c(-4,1,1,1,1,-1.0,3.0,c(10,10),log(10.0))
 opt <- nlminb(obj$par,obj$fn,obj$gr,lower=L,upper=U)
 
 
