@@ -78,8 +78,8 @@ template<class Type>
   SparseMatrix<Type> G0 = spde.G0;
   SparseMatrix<Type> G0_inv = spde.G0_inv;
 	  	  
-  Type H_trace = H(0,0)+H(1,1);
-  Type H_det = H(0,0)*H(1,1)-H(0,1)*H(1,0);
+  //Type H_trace = H(0,0)+H(1,1);
+  //Type H_det = H(0,0)*H(1,1)-H(0,1)*H(1,0);
   SparseMatrix<Type> G1_aniso(n_s,n_s); 
   SparseMatrix<Type> G2_aniso(n_s,n_s); 
   // Calculate adjugate of H
