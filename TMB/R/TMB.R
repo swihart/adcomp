@@ -938,6 +938,32 @@ compile <- function(file,flags="",safebounds=TRUE,safeunload=TRUE,
     tr <- try(dyn.unload(dynlib(libname)),silent=TRUE)
     if(!is(tr,"try-error"))cat("Note: Library",paste0("'",dynlib(libname),"'"),"was unloaded.\n")
   }
+  ## On windows we limit the amount of exported symbols
+  if(.Platform$OS.type=="windows"){
+      ## Create exports file
+      windef <- paste0(libname, "-win.def")
+      if(file.exists(windef)) {
+          warning("Using existing windef")
+      } else {
+          txt <- c(
+              paste("LIBRARY", dynlib(libname)),
+              "EXPORTS",
+              "MakeADFunObject",
+              "InfoADFunObject",
+              "optimizeADFunObject",
+              "EvalADFunObject",
+              "MakeDoubleFunObject",
+              "EvalDoubleFunObject",
+              "getParameterOrder",
+              "MakeADGradObject",
+              "MakeADHessObject2",
+              "usingAtomics",
+              "TMBconfig"
+              )
+          writeLines(txt, windef)
+          on.exit(file.remove(windef), add=TRUE)
+      }
+  }
   ## Includes and preprocessor flags specific for the template
   useRcppEigen <- !file.exists( system.file("include/Eigen",package="TMB") )
   ppflags <- paste(paste0("-I",system.file("include",package="TMB")),
