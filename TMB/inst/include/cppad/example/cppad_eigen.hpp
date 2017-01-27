@@ -145,21 +145,21 @@ namespace CppAD {
 namespace Eigen { 
 	namespace internal {
 
-		template<class Base> 
-		struct significant_decimals_default_impl< CppAD::AD<Base>, false>
-		{	typedef CppAD::AD<Base> Scalar;
+		// template<class Base> 
+		// struct significant_decimals_default_impl< CppAD::AD<Base>, false>
+		// {	typedef CppAD::AD<Base> Scalar;
 
-  			typedef typename NumTraits<Scalar>::Real RealScalar;
-  			static inline int run()
-  			{	Scalar neg_log_eps = - log(
-					NumTraits<RealScalar>::epsilon()
-				);
-				int ceil_neg_log_eps = Integer( neg_log_eps );
-				if( Scalar(ceil_neg_log_eps) < neg_log_eps )
-					ceil_neg_log_eps++;
-				return ceil_neg_log_eps;
-  			}
-		};
+  		// 	typedef typename NumTraits<Scalar>::Real RealScalar;
+  		// 	static inline int run()
+  		// 	{	Scalar neg_log_eps = - log(
+		// 			NumTraits<RealScalar>::epsilon()
+		// 		);
+		// 		int ceil_neg_log_eps = Integer( neg_log_eps );
+		// 		if( Scalar(ceil_neg_log_eps) < neg_log_eps )
+		// 			ceil_neg_log_eps++;
+		// 		return ceil_neg_log_eps;
+  		// 	}
+		// };
 	}
 }
 /* $$
