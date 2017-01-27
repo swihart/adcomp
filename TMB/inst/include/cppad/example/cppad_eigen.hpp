@@ -85,6 +85,7 @@ namespace Eigen {
 		typedef CppAD::AD<Base>   NonInteger;
 		// type for nested value inside an AD<Base> expression tree
 		typedef CppAD::AD<Base>   Nested;
+		typedef CppAD::AD<Base>   Literal;
 
 		enum {
 			// does not support complex Base types
