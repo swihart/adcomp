@@ -84,7 +84,7 @@ TMB_ATOMIC_VECTOR_FUNCTION(						\
   atomic::mask_t<OCTAL(MASK)>::set_length<NCHAR(MASK)> mask_type;	\
   mask_type mask;							\
   static const int nvar = mask_type::count;				\
-  tiny_vec_ref<double> tyref(&ty[0], ty.size());                        \
+  atomic::tiny_vec_ref<double> tyref(&ty[0], ty.size());                \
   if(order==0) {							\
     typedef double Float;						\
     CppAD::vector<Float> x(tx);						\
