@@ -68,10 +68,16 @@ print.checkConsistency <- function(x, alpha=.05, ...) {
         } else {
             ## Variance of score = Information
             H <- var(t(mat))
-            iH <- solve(H)
-            q <- as.vector( t(mu) %*% iH %*% mu )
-            p.value <- 1 - pchisq(q, df=nrow(H))
-            bias <- iH %*% mu
+            iH <- try(solve(H), silent=TRUE)
+            if(is(iH, "try-error")) {
+                warning("Failed to invert information matrix")
+                bias <- attr(x, "par") * NA
+                p.value <- NA
+            } else {
+                q <- as.vector( t(mu) %*% iH %*% mu )
+                p.value <- 1 - pchisq(q, df=nrow(H))
+                bias <- iH %*% mu
+            }
         }
         bias <- as.vector(bias)
         names(bias) <- names(attr(x, "par"))
