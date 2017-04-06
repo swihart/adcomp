@@ -39,15 +39,70 @@ checkConsistency <- function(obj,
         ans
     }
     ans <- lapply(seq_len(n), doSim)
+    attr(ans, "par") <- par
     class(ans) <- "checkConsistency"
     ans
 }
 
+print.checkConsistency <- function(x, alpha=.05, ...) {
+    cat("Parameters used for simulation:\n")
+    print(attr(x, "par"))
+    ## Check simulation
+    check <- function(name = "gradientJoint", get=c("p.value", "bias")) {
+        get <- match.arg(get)
+        if(is.null(x[[1]][[name]])) {
+            return(NA)
+        }
+        nsim <- length(x)
+        mat <- do.call("cbind", lapply(x, function(x)as.vector(x[[name]])))
+        mu <- rowMeans(mat)
+        n <- length(mu)
+        bias <- p.value <- NULL
+        if(nsim < n) {
+            ## Independence
+            warning("Assuming independence in simulation test ", nsim,"<",n)
+            q <- apply(mat, 1, function(x)mean(x)/sd(x))
+            p.value <- 1 - pchisq(q, df=1)
+            p.value <- mean(p.value)
+            bias <- apply(mat, 1, function(x)mean(x)/(x))
+        } else {
+            ## Variance of score = Information
+            H <- var(t(mat))
+            iH <- solve(H)
+            q <- as.vector( t(mu) %*% iH %*% mu )
+            p.value <- 1 - pchisq(q, df=nrow(H))
+            bias <- iH %*% mu
+        }
+        bias <- as.vector(bias)
+        names(bias) <- names(attr(x, "par"))
+        list(p.value=p.value, bias=bias)[[get]]
+    }
+    p.value <- check("gradientJoint", "p.value")
+    cat("\n")
+    cat("Test correct simulation (p.value):\n")
+    print(p.value)
+    sim.ok <- p.value > alpha
+    if(is.na(sim.ok))
+        cat("Full simulation was not available\n")
+    else if(!sim.ok)
+        cat("Simulation does *not* appear to be correct !!!\n")
+    else
+        cat("Simulation appears to be correct\n")
+    ## Check Laplace:
+    cat("\n")
+    cat("Estimated parameter bias due to Laplace approximation:\n")
+    bias <- check("gradient", "bias")
+    print(bias)
+}
+
 if(FALSE) {
     library(TMB)
-    ##runExample("sam", exfolder="../../tmb_examples")
+    runExample("sam", exfolder="../../tmb_examples")
+    set.seed(123)
+    qw <- checkConsistency(obj, opt$par, n=100)
+    qw
     runExample("ar1_4D", exfolder="../../tmb_examples")
-    qw <- checkConsistency(obj, opt$par, n=10)
-    mat <- sapply(qw, function(x)x$gradient)
-    rowMeans(mat)
+    set.seed(123)
+    qw <- checkConsistency(obj, opt$par, n=100)
+    qw
 }
