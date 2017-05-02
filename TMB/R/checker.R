@@ -11,24 +11,53 @@
 ## otherwise 'par'.
 
 checkConsistency <- function(obj,
-                             par = obj$par,
+                             par = NULL,
                              what = c("marginal", "joint"),
                              hessian = FALSE,
-                             n = 10
+                             n = 10,
+                             reDoCholesky = TRUE
                              ) {
-    r <- obj$env$random
-    parfull <- obj$env$par
-    randomNames <- unique(names(parfull[r])) ## Fixme: Remove profile parameters
-    if( any(r) ) parfull[-r] <- par else parfull[] <- par
-    parameters <- obj$env$parList(par = parfull)
+    ## Cleanup 'obj' when we exit from this function:
+    restore.on.exit <- c("last.par.best",
+                         "random.start",
+                         "value.best",
+                         "last.par",
+                         "inner.control",
+                         "tracemgc",
+                         "parameters",
+                         "data")
+    oldvars <- sapply(restore.on.exit, get, envir=obj$env, simplify=FALSE)
+    restore.oldvars <- function(){
+        for(var in names(oldvars)) assign(var, oldvars[[var]], envir=obj$env)
+    }
+    on.exit({
+        restore.oldvars()
+        obj$retape()
+        restore.oldvars()
+    })
+    ## Determine parameter and full parameter to use
+    r0 <- r <- obj$env$random
+    if( is.null(par) && !is.null(obj$env$last.par.best) ) {
+        ## Default case: Optimization has been carried out by user
+        parfull <- obj$env$last.par.best
+        if( any(r) ) par <- parfull[-r] else par <- parfull
+    } else {
+        ## Custom case: User specifies parameter vector (fixed effects)
+        parfull <- obj$env$par
+        if( any(r) ) parfull[-r] <- par else parfull <- par
+    }
+    ## Get names of random effects (excluding profiled parameters)
+    if(any(obj$env$profile)) r0 <- r[ ! as.logical(obj$env$profile) ]
+    randomNames <- unique(names(parfull[r0]))
     doSim <- function(...) {
-        obj$env$parameters <- parameters
-        obj$env$data <- obj$simulate(complete=TRUE)
+        obj$env$data <- obj$simulate(parfull, complete=TRUE)
         ## Check that random effects have been simulated
         haveRandomSim <- all( randomNames %in% names(obj$env$data) )
         if (haveRandomSim) {
             obj$env$parameters[randomNames] <- obj$env$data[randomNames]
         }
+        if(reDoCholesky)
+            obj$env$L.created.by.newton <- NULL
         obj$env$retape()
         ans <- list()
         if (haveRandomSim) {
@@ -106,7 +135,7 @@ if(FALSE) {
     runExample("sam", exfolder="../../tmb_examples")
     set.seed(123)
     qw <- checkConsistency(obj, opt$par, n=100)
-    qw
+    print.checkConsistency(qw)
     runExample("ar1_4D", exfolder="../../tmb_examples")
     set.seed(123)
     qw <- checkConsistency(obj, opt$par, n=100)
