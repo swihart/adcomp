@@ -107,7 +107,7 @@ print.checkConsistency <- function(x, alpha=.05, ...) {
             } else {
                 q <- as.vector( t(mu) %*% iH %*% mu )
                 p.value <- 1 - pchisq(q, df=nrow(H))
-                bias <- iH %*% mu
+                bias <- -iH %*% mu
             }
         }
         bias <- as.vector(bias)
