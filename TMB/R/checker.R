@@ -127,7 +127,7 @@ print.checkConsistency <- function(x, alpha=.05, ...) {
         cat("Simulation appears to be correct\n")
     ## Check Laplace:
     cat("\n")
-    cat("Estimated parameter bias due to Laplace approximation:\n")
+    cat("Estimated parameter bias:\n")
     bias <- check("gradient", "bias")
     print(bias)
 }
