@@ -75,9 +75,10 @@ checkConsistency <- function(obj,
     ans
 }
 
-print.checkConsistency <- function(x, alpha=.05, ...) {
-    cat("Parameters used for simulation:\n")
-    print(attr(x, "par"))
+## Summarize simulation experiment
+summary.checkConsistency <- function(x, alpha=.05, ...) {
+    ans <- list()
+    ans$par <- attr(x, "par")
     ## Check simulation
     check <- function(name = "gradientJoint", get=c("p.value", "bias")) {
         get <- match.arg(get)
@@ -114,22 +115,33 @@ print.checkConsistency <- function(x, alpha=.05, ...) {
         names(bias) <- names(attr(x, "par"))
         list(p.value=p.value, bias=bias)[[get]]
     }
-    p.value <- check("gradientJoint", "p.value")
+    ans$p.value <- check("gradientJoint", "p.value")
+    ans$sim.ok <- ( ans$p.value > alpha )
+    ## Check Laplace:
+    ans$bias <- check("gradient", "bias")
+    ans
+}
+
+
+
+print.checkConsistency <- function(x, ...) {
+    s <- summary(x)
+    cat("Parameters used for simulation:\n")
+    print(s$par)
     cat("\n")
     cat("Test correct simulation (p.value):\n")
-    print(p.value)
-    sim.ok <- p.value > alpha
-    if(is.na(sim.ok))
+    print(s$p.value)
+    if(is.na(s$sim.ok))
         cat("Full simulation was not available\n")
-    else if(!sim.ok)
+    else if(!s$sim.ok)
         cat("Simulation does *not* appear to be correct !!!\n")
     else
         cat("Simulation appears to be correct\n")
     ## Check Laplace:
     cat("\n")
     cat("Estimated parameter bias:\n")
-    bias <- check("gradient", "bias")
-    print(bias)
+    print(s$bias)
+    invisible(x)
 }
 
 if(FALSE) {
