@@ -42,7 +42,7 @@ checkConsistency <- function(obj,
     }
     names.random <- unique(names(parfull[r0]))
     ## Use 'parfull' for new object
-    args$parameters <- obj$env$parList(par = parfull)
+    args$parameters <- obj$env$parList(par, par = parfull)
     ## Fix all profiled parameters
     map.profile <- lapply(args$parameters[names.profile], function(x)factor(x*NA))
     args$map <- c(args$map, map.profile)
