@@ -76,9 +76,9 @@ checkConsistency <- function(obj,
 }
 
 ## Summarize simulation experiment
-summary.checkConsistency <- function(x, alpha=.05, ...) {
+summary.checkConsistency <- function(object, alpha=.05, ...) {
     ans <- list()
-    ans$par <- attr(x, "par")
+    ans$par <- attr(object, "par")
     ## Check simulation
     check <- function(name = "gradientJoint", get=c("p.value", "bias")) {
         get <- match.arg(get)
