@@ -17,28 +17,15 @@ checkConsistency <- function(obj,
                              n = 10,
                              reDoCholesky = TRUE
                              ) {
-    ## Cleanup 'obj' when we exit from this function:
-    restore.on.exit <- c("last.par.best",
-                         "random.start",
-                         "value.best",
-                         "last.par",
-                         "inner.control",
-                         "tracemgc",
-                         "parameters",
-                         "data")
-    oldvars <- sapply(restore.on.exit, get, envir=obj$env, simplify=FALSE)
-    restore.oldvars <- function(){
-        for(var in names(oldvars)) assign(var, oldvars[[var]], envir=obj$env)
-    }
-    on.exit({
-        restore.oldvars()
-        obj$retape()
-        restore.oldvars()
-    })
+    ## Args to construct copy of 'obj'
+    args <- as.list(obj$env)[intersect(names(formals(MakeADFun)), ls(obj$env))]
     ## Determine parameter and full parameter to use
     r0 <- r <- obj$env$random
-    if( is.null(par) && !is.null(obj$env$last.par.best) ) {
+    if( is.null(par) ) {
         ## Default case: Optimization has been carried out by user
+        if (is.null(obj$env$last.par.best)) {
+            stop("'par' not specified.")
+        }
         parfull <- obj$env$last.par.best
         if( any(r) ) par <- parfull[-r] else par <- parfull
     } else {
@@ -47,24 +34,39 @@ checkConsistency <- function(obj,
         if( any(r) ) parfull[-r] <- par else parfull <- par
     }
     ## Get names of random effects (excluding profiled parameters)
-    if(any(obj$env$profile)) r0 <- r[ ! as.logical(obj$env$profile) ]
-    randomNames <- unique(names(parfull[r0]))
+    if(any(obj$env$profile)) {
+        r0 <- r[ ! as.logical(obj$env$profile) ]
+        names.profile <- unique(names(parfull[r[as.logical(obj$env$profile)]]))
+    } else {
+        names.profile <- NULL
+    }
+    names.random <- unique(names(parfull[r0]))
+    ## Use 'parfull' for new object
+    args$parameters <- obj$env$parList(par = parfull)
+    ## Fix all profiled parameters
+    map.profile <- lapply(args$parameters[names.profile], function(x)factor(x*NA))
+    args$map <- c(args$map, map.profile)
+    ## Find randomeffects character
+    args$random <- names.random
+    args$regexp <- FALSE
+    ## Create new object
+    newobj <- do.call("MakeADFun", args)
     doSim <- function(...) {
-        obj$env$data <- obj$simulate(parfull, complete=TRUE)
+        newobj$env$data <- newobj$simulate(newobj$env$par, complete=TRUE)
         ## Check that random effects have been simulated
-        haveRandomSim <- all( randomNames %in% names(obj$env$data) )
+        haveRandomSim <- all( names.random %in% names(newobj$env$data) )
         if (haveRandomSim) {
-            obj$env$parameters[randomNames] <- obj$env$data[randomNames]
+            newobj$env$parameters[names.random] <- newobj$env$data[names.random]
         }
         if(reDoCholesky)
-            obj$env$L.created.by.newton <- NULL
-        obj$env$retape()
+            newobj$env$L.created.by.newton <- NULL
+        newobj$env$retape()
         ans <- list()
         if (haveRandomSim) {
-            ans$gradientJoint <- obj$env$f(order=1)
+            ans$gradientJoint <- newobj$env$f(order=1)
         }
-        ans$gradient <- obj$gr(par)
-        if (hessian) ans$hessian <- optimHess(par, obj$fn, obj$gr)
+        ans$gradient <- newobj$gr(par)
+        if (hessian) ans$hessian <- optimHess(par, newobj$fn, newobj$gr)
         ans
     }
     ans <- lapply(seq_len(n), doSim)
