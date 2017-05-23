@@ -124,7 +124,7 @@ summary.checkConsistency <- function(object, ...) {
         nsim <- ncol(mat)
         bias <- p.value <- NULL
         if(nsim < npar) {
-            stop("Too few simulations ", nsim, " compared to number of parameters ", n)
+            stop("Too few simulations ", nsim, " compared to number of parameters ", npar)
         }
         ## Variance of score = Information
         H <- var(t(mat))
