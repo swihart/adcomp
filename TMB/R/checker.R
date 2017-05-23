@@ -1,21 +1,40 @@
-## Check consistency of various parts of the implementation.
-## Requires that user has implemented SIMULATE code.
-##
-## 1. what="joint": Report p-value for correct simulation (validates
-## simulation code).
-## 2. what="marginal": Report percentwise bias of estimates and std
-## errors due to Laplace inaccuracy.
-##
-## Tests do not depend on data. Can be run for any parameter in the
-## parameter space. By default use 'last.par.best' if exists -
-## otherwise 'par'.
-
+##' Check consistency of various parts of a TMB implementation.
+##' Requires that user has implemented simulation code for the data and
+##' optionally random effects. (\emph{Beta version; may change without
+##' notice})
+##'
+##' This function checks that the simulation code of random effects and
+##' data is consistent with the implemented negative log-likelihood
+##' function. It also checks whether the approximate \emph{marginal}
+##' score function is central indicating whether the Laplace
+##' approximation is suitable for parameter estimation.
+##'
+##' Denote by \eqn{u} the random effects, \eqn{\theta} the parameters
+##' and by \eqn{x} the data.  The main assumption is that the user has
+##' implemented the joint negative log likelihood \eqn{f_{\theta}(u,x)}
+##' satisfying
+##' \deqn{\int \int \exp( -f_{\theta}(u,x) ) \:du\:dx = 1}
+##' It follows that the joint and marginal score functions are central:
+##' \enumerate{
+##'   \item \eqn{E_{u,x}\left[\nabla_{\theta}f_{\theta}(u,x)\right]=0}
+##'   \item \eqn{E_{x}\left[\nabla_{\theta}-\log\left( \int \exp(-f_{\theta}(u,x))\:du \right) \right]=0}
+##' }
+##' The first identity is used to check that the simulation is
+##' correct. The second identity is used to check that the Laplace
+##' approximation is sufficiently accurate.
+##'
+##' @title Check consistency and Laplace accuracy
+##' @param obj Object from \code{MakeADFun}
+##' @param par Parameter vector for simulation. If unspecified use the
+##'     best encountered parameter in the object.
+##' @param hessian Calculate the hessian matrix for each replicate ?
+##' @param n Number of simulations
+##' @return list with gradient simulations (joint and marginal)
+##' @seealso \code{\link{summary.checkConsistency}}, \code{\link{print.checkConsistency}}
 checkConsistency <- function(obj,
                              par = NULL,
-                             what = c("marginal", "joint"),
                              hessian = FALSE,
-                             n = 10,
-                             reDoCholesky = TRUE
+                             n = 100
                              ) {
     ## Args to construct copy of 'obj'
     args <- as.list(obj$env)[intersect(names(formals(MakeADFun)), ls(obj$env))]
@@ -58,12 +77,15 @@ checkConsistency <- function(obj,
         if (haveRandomSim) {
             newobj$env$parameters[names.random] <- newobj$env$data[names.random]
         }
+        reDoCholesky <- TRUE ## FIXME: Perhaps make it an option
         if(reDoCholesky)
             newobj$env$L.created.by.newton <- NULL
         newobj$env$retape()
         ans <- list()
         if (haveRandomSim) {
             ans$gradientJoint <- newobj$env$f(order=1)
+            if(!is.null(newobj$env$random))
+                ans$gradientJoint <- ans$gradientJoint[-newobj$env$random]
         }
         ans$gradient <- newobj$gr(par)
         if (hessian) ans$hessian <- optimHess(par, newobj$fn, newobj$gr)
@@ -75,62 +97,74 @@ checkConsistency <- function(obj,
     ans
 }
 
-## Summarize simulation experiment
-summary.checkConsistency <- function(object, alpha=.05, ...) {
+##' Summarize output from \code{\link{checkConsistency}}
+##'
+##' @title Summarize output from \code{\link{checkConsistency}}
+##' @param object Output from \code{\link{checkConsistency}}
+##' @param ... Not used
+##' @return List of diagnostics
+##' @method summary checkConsistency
+##' @S3method summary checkConsistency
+summary.checkConsistency <- function(object, ...) {
     ans <- list()
     ans$par <- attr(object, "par")
+    getMat <- function(name) {
+        do.call("cbind",
+                lapply(object,
+                       function(x)
+                           as.vector(x[[name]])))
+    }
+    ans$gradientJoint <- getMat( "gradientJoint" )
+    ans$gradient      <- getMat( "gradient" )
     ## Check simulation
-    check <- function(name = "gradientJoint", get=c("p.value", "bias")) {
-        get <- match.arg(get)
-        if(is.null(x[[1]][[name]])) {
-            return(NA)
-        }
-        nsim <- length(x)
-        mat <- do.call("cbind", lapply(x, function(x)as.vector(x[[name]])))
+    check <- function(mat) {
+        if(!is.matrix(mat)) return( list(p.value=NA, bias=NA) )
         mu <- rowMeans(mat)
-        n <- length(mu)
+        npar <- length(mu)
+        nsim <- ncol(mat)
         bias <- p.value <- NULL
-        if(nsim < n) {
-            ## Independence
-            warning("Assuming independence in simulation test ", nsim,"<",n)
-            q <- apply(mat, 1, function(x)mean(x)/sd(x))
-            p.value <- 1 - pchisq(q, df=1)
-            p.value <- mean(p.value)
-            bias <- apply(mat, 1, function(x)mean(x)/(x))
+        if(nsim < npar) {
+            stop("Too few simulations ", nsim, " compared to number of parameters ", n)
+        }
+        ## Variance of score = Information
+        H <- var(t(mat))
+        iH <- try(solve(H), silent=TRUE)
+        if(is(iH, "try-error")) {
+            warning("Failed to invert information matrix")
+            bias <- attr(object, "par") * NA
+            p.value <- NA
         } else {
-            ## Variance of score = Information
-            H <- var(t(mat))
-            iH <- try(solve(H), silent=TRUE)
-            if(is(iH, "try-error")) {
-                warning("Failed to invert information matrix")
-                bias <- attr(x, "par") * NA
-                p.value <- NA
-            } else {
-                q <- as.vector( t(mu) %*% iH %*% mu )
-                p.value <- 1 - pchisq(q, df=nrow(H))
-                bias <- -iH %*% mu
-            }
+            mu.scaled <- sqrt(nsim) * mu
+            q <- as.vector( t(mu.scaled) %*% iH %*% mu.scaled )
+            p.value <- 1 - pchisq(q, df=npar)
+            bias <- -iH %*% mu
         }
         bias <- as.vector(bias)
-        names(bias) <- names(attr(x, "par"))
-        list(p.value=p.value, bias=bias)[[get]]
+        names(bias) <- names(attr(object, "par"))
+        list(p.value=p.value, bias=bias)
     }
-    ans$p.value <- check("gradientJoint", "p.value")
-    ans$sim.ok <- ( ans$p.value > alpha )
-    ## Check Laplace:
-    ans$bias <- check("gradient", "bias")
+    ans$joint <- check( ans$gradientJoint )
+    ans$marginal <- check( ans$gradient )
     ans
 }
 
-
-
+##' Print diagnostics output from \code{\link{checkConsistency}}
+##'
+##' @title Print output from \code{\link{checkConsistency}}
+##' @param x Output from \code{\link{checkConsistency}}
+##' @param ... Not used
+##' @return NULL
+##' @method print checkConsistency
+##' @S3method print checkConsistency
 print.checkConsistency <- function(x, ...) {
     s <- summary(x)
     cat("Parameters used for simulation:\n")
     print(s$par)
     cat("\n")
     cat("Test correct simulation (p.value):\n")
-    print(s$p.value)
+    print(s$joint$p.value)
+    alpha <- .05 ## FIXME: Perhaps make option
+    s$sim.ok <- ( s$joint$p.value > alpha )
     if(is.na(s$sim.ok))
         cat("Full simulation was not available\n")
     else if(!s$sim.ok)
@@ -140,7 +174,7 @@ print.checkConsistency <- function(x, ...) {
     ## Check Laplace:
     cat("\n")
     cat("Estimated parameter bias:\n")
-    print(s$bias)
+    print(s$marginal$bias)
     invisible(x)
 }
 
