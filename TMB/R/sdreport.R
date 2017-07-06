@@ -24,6 +24,8 @@
 ##' \eqn{V(\phi(\hat\theta))} is returned by default. This can cause
 ##' high memory usage if many variables are ADREPORTed. Use
 ##' \code{getReportCovariance=FALSE} to only return standard errors.
+##' In case standard deviations are not required one can completely skip
+##' the delta method using \code{skip.delta.method=TRUE}.
 ##'
 ##' For random effect models a generalized delta-method is used. First
 ##' the joint covariance of random effects and parameters is estimated
@@ -86,6 +88,8 @@
 ##' chunks as \code{bias.correct.control$nsplit} in which case all
 ##' ADREPORTed variables are bias corrected in the specified number of
 ##' chunks.
+##' Also note that \code{skip.delta.method} may be necessary when bias
+##' correcting a large number of variables.
 ##'
 ##' @title General sdreport function.
 ##' @param obj Object returned by \code{MakeADFun}
@@ -96,6 +100,7 @@
 ##' @param bias.correct.control a \code{list} of bias correction options; currently \code{sd}, \code{split} and \code{nsplit} are used - see details.
 ##' @param ignore.parm.uncertainty Optional. Ignore estimation variance of parameters?
 ##' @param getReportCovariance Get full covariance matrix of ADREPORTed variables?
+##' @param skip.delta.method Skip the delta method? (\code{FALSE} by default)
 ##' @return Object of class \code{sdreport}
 ##' @seealso \code{\link{summary.sdreport}}, \code{\link{print.sdreport}}, \code{\link{as.list.sdreport}}
 ##' @examples
@@ -114,7 +119,7 @@
 ##' summary(rep, "report")                      ## Include bias correction
 sdreport <- function(obj,par.fixed=NULL,hessian.fixed=NULL,getJointPrecision=FALSE,bias.correct=FALSE,
                      bias.correct.control=list(sd=FALSE, split=NULL, nsplit=NULL), ignore.parm.uncertainty = FALSE,
-                     getReportCovariance=TRUE){
+                     getReportCovariance=TRUE, skip.delta.method=FALSE){
   if(is.null(obj$env$ADGrad) & (!is.null(obj$env$random)))
     stop("Cannot calculate sd's without type ADGrad available in object for random effect models.")
   ## Make object to calculate ADREPORT vector
@@ -228,12 +233,17 @@ sdreport <- function(obj,par.fixed=NULL,hessian.fixed=NULL,getJointPrecision=FAL
       ##list(phi=phi, cov=cov)
       cov
   }
-  if(getReportCovariance){ ## Get all
-      cov <- doDeltaMethod()
-      sd <- sqrt(diag(cov))
+  if (!skip.delta.method) {
+      if (getReportCovariance) { ## Get all
+          cov <- doDeltaMethod()
+          sd <- sqrt(diag(cov))
+      } else {
+          tmp <- lapply(seq_along(phi), doDeltaMethod)
+          sd <- sqrt(unlist(tmp))
+          cov <- NA
+      }
   } else {
-      tmp <- lapply(seq_along(phi), doDeltaMethod)
-      sd <- sqrt(unlist(tmp))
+      sd <- rep(NA, length(phi))
       cov <- NA
   }
   ## Output
