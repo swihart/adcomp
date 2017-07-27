@@ -63,6 +63,27 @@ void eigen_REprintf(const char* x);
 #define NDEBUG 1
 #include "cppad/cppad.hpp"
 
+/* Include the libstable library. (Always turn off debug for libstable) */
+#undef NDEBUG
+#define NDEBUG 1
+#include <libstable/mcculloch.c>          
+#include <libstable/mcculloch.h>          
+#include <libstable/methods.c>            
+#include <libstable/methods.h>            
+#include <libstable/stable_cdf.c>         
+#include <libstable/stable_common.c>      
+#include <libstable/stable_dist.c>        
+#include <libstable/stable_fit.c>         
+#include <libstable/stable_fit.h>         
+#include <libstable/stable_integration.c> 
+#include <libstable/stable_integration.h> 
+#include <libstable/stable_koutrouvelis.c>
+#include <libstable/stable_pdf.c>         
+#include <libstable/stable_q.c>           
+#include <libstable/stable_rnd.c>         
+#include <libstable/stable.h>             
+
+
 /* Include the R library _after_ Eigen and CppAD. Otherwise, the R
    macros can cause conflicts (as they do not respect the Eigen and
    CppAD namespace limits). E.g., the 'length' macro conflicts with

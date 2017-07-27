@@ -46,7 +46,8 @@ Imports:
     methods,
     stats,
     utils,
-    Matrix (>= 1.0-12)
+    Matrix (>= 1.0-12),
+    RcppGSL
 LinkingTo: Matrix
 Suggests:
     numDeriv,
